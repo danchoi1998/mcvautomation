@@ -23,10 +23,8 @@ import time
 import os
 import psycopg2
 import xlsxwriter
-from dotenv import load_dotenv
 import math
-
-load_dotenv()
+import settings
 
 
 # =============================================================================
@@ -101,14 +99,12 @@ def connect_salesforce(username: str, password: str, security_token: str, is_tes
 
 def connect_datawarehouse():
     """Returns a psycopg2 connection to the data warehouse."""
-    db_host     = ""   # ← fill in
-    db_user     = ""   # ← fill in
-    db_password = ""   # ← fill in
-    db_name     = ""   # ← fill in
-    db_port     = ""   # ← fill in
     return psycopg2.connect(
-        host=db_host, database=db_name,
-        user=db_user, password=db_password, port=db_port,
+        host=settings.DB_HOST,
+        database=settings.DB_NAME,
+        user=settings.DB_USER,
+        password=settings.DB_PASSWORD,
+        port=settings.DB_PORT,
     )
 
 
@@ -883,10 +879,7 @@ def main():
     overall_start = time.time()
 
     # ── Connect ──────────────────────────────────────────────────────────
-    username       = "username_here"   # ← fill in
-    password       = "password_here"   # ← fill in
-    security_token = "security_token_here"   # ← fill in
-    sf = connect_salesforce(username, password, security_token, False)
+    sf = connect_salesforce(settings.SF_USERNAME, settings.SF_PASSWORD, settings.SF_SECURITY_TOKEN, False)
 
     # ── Config ───────────────────────────────────────────────────────────
     myconf = Config()
