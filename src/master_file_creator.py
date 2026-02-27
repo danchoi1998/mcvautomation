@@ -28,9 +28,9 @@ import os
 # CONFIG  –  Edit these before running
 # =============================================================================
 
-BEFORE_FILE = r""   # ← path to the "before" date range Excel file
-DURING_FILE = r""   # ← path to the "during" date range Excel file
-OUTPUT_FILE = r""   # ← path where the master Excel file will be saved
+BEFORE_FILE = r"z:\\Shared\\GPO Operations\\GPO Analytics & Support\\Data Skills Learning\\GPO Analytics Python Trainings\\Daniel's Files\\DYMA Brands - Powdered Drink Mix Target List 2025-05-01 to 2025-08-31 on 2026-02-26 at 11-02.xlsx"   # ← path to the "before" date range Excel file
+DURING_FILE = r"z:\\Shared\\GPO Operations\\GPO Analytics & Support\\Data Skills Learning\\GPO Analytics Python Trainings\\Daniel's Files\\DYMA Brands - Powdered Drink Mix Target List 2024-09-01 to 2024-12-31 on 2026-02-26 at 11-11.xlsx"   # ← path to the "during" date range Excel file
+OUTPUT_DIR = r"z:\\Shared\\GPO Operations\\GPO Analytics & Support\\Data Skills Learning\\GPO Analytics Python Trainings\\Daniel's Files"   # ← directory where the master Excel file will be saved
 
 SHEET_NAME = "ALL Item Level Detail"
 
@@ -106,6 +106,18 @@ DURING_RENAMES = {
 # HELPERS
 # =============================================================================
 
+def build_output_path(before_file, during_file, output_dir):
+    """Generate an output filename from the common prefix of the two input filenames."""
+    before_name = os.path.splitext(os.path.basename(before_file))[0]
+    during_name = os.path.splitext(os.path.basename(during_file))[0]
+    # Find the longest common prefix
+    common = os.path.commonprefix([before_name, during_name]).rstrip(" -")
+    if not common:
+        common = before_name
+    filename = f"{common} - MASTER.xlsx"
+    return os.path.join(output_dir, filename)
+
+
 def load_sheet(filepath, sheet_name):
     if not os.path.exists(filepath):
         raise FileNotFoundError(f"File not found: {filepath}")
@@ -134,7 +146,8 @@ def resolve_merge_keys(df_before, df_during, requested_keys):
 # MAIN
 # =============================================================================
 
-def create_master_file(before_file, during_file, output_file, sheet_name=SHEET_NAME):
+def create_master_file(before_file, during_file, output_dir, sheet_name=SHEET_NAME):
+    output_file = build_output_path(before_file, during_file, output_dir)
     # --- Load ---
     df_before = load_sheet(before_file, sheet_name)
     df_during = load_sheet(during_file, sheet_name)
@@ -160,9 +173,7 @@ def create_master_file(before_file, during_file, output_file, sheet_name=SHEET_N
     print(f"  Master: {len(master):,} rows, {len(master.columns)} columns")
 
     # --- Save ---
-    out_dir = os.path.dirname(output_file)
-    if out_dir:
-        os.makedirs(out_dir, exist_ok=True)
+    os.makedirs(output_dir, exist_ok=True)
 
     with pd.ExcelWriter(output_file, engine="xlsxwriter") as writer:
         master.to_excel(writer, sheet_name="Master", index=False)
@@ -177,6 +188,6 @@ def create_master_file(before_file, during_file, output_file, sheet_name=SHEET_N
 
 
 if __name__ == "__main__":
-    if not BEFORE_FILE or not DURING_FILE or not OUTPUT_FILE:
-        raise ValueError("Please set BEFORE_FILE, DURING_FILE, and OUTPUT_FILE in the CONFIG section.")
-    create_master_file(BEFORE_FILE, DURING_FILE, OUTPUT_FILE)
+    if not BEFORE_FILE or not DURING_FILE or not OUTPUT_DIR:
+        raise ValueError("Please set BEFORE_FILE, DURING_FILE, and OUTPUT_DIR in the CONFIG section.")
+    create_master_file(BEFORE_FILE, DURING_FILE, OUTPUT_DIR)
