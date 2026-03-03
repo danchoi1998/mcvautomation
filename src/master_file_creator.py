@@ -23,14 +23,15 @@ Usage:
 
 import pandas as pd
 import os
+from pathlib import Path
 
 # =============================================================================
 # CONFIG  –  Edit these before running
 # =============================================================================
 
-BEFORE_FILE = r"z:\\Shared\\GPO Operations\\GPO Analytics & Support\\Data Skills Learning\\GPO Analytics Python Trainings\\Daniel's Files\\DYMA Brands - Powdered Drink Mix Target List 2025-05-01 to 2025-08-31 on 2026-02-26 at 11-02.xlsx"   # ← path to the "before" date range Excel file
-DURING_FILE = r"z:\\Shared\\GPO Operations\\GPO Analytics & Support\\Data Skills Learning\\GPO Analytics Python Trainings\\Daniel's Files\\DYMA Brands - Powdered Drink Mix Target List 2024-09-01 to 2024-12-31 on 2026-02-26 at 11-11.xlsx"   # ← path to the "during" date range Excel file
-OUTPUT_DIR = r"z:\\Shared\\GPO Operations\\GPO Analytics & Support\\Data Skills Learning\\GPO Analytics Python Trainings\\Daniel's Files"   # ← directory where the master Excel file will be saved
+BEFORE_FILE = Path(r"/mnt/c/Users/DanielChoi/OneDrive - Buyers Edge Platform/Desktop/Python/MCVAutomation/test_files/previously_completed_validations/Essity Mfold Towel Campaign Validation - Before.xlsx")   # ← path to the "before" date range Excel file
+DURING_FILE = Path(r"/mnt/c/Users/DanielChoi/OneDrive - Buyers Edge Platform/Desktop/Python/MCVAutomation/test_files/previously_completed_validations/Essity Mfold Towel Campaign Validation - During.xlsx")  # ← path to the "during" date range Excel file
+OUTPUT_DIR = Path(r"/mnt/c/Users/DanielChoi/OneDrive - Buyers Edge Platform/Desktop/Python/MCVAutomation/test_files")   # ← directory where the master Excel file will be saved
 
 SHEET_NAME = "ALL Item Level Detail"
 
@@ -178,11 +179,11 @@ def create_master_file(before_file, during_file, output_dir, sheet_name=SHEET_NA
     with pd.ExcelWriter(output_file, engine="xlsxwriter") as writer:
         master.to_excel(writer, sheet_name="Master", index=False)
 
-        # Auto-fit column widths
         worksheet = writer.sheets["Master"]
         for i, col in enumerate(master.columns):
-            max_len = max(master[col].astype(str).map(len).max(), len(col)) + 2
-            worksheet.set_column(i, i, min(max_len, 60))
+            s = master[col].fillna("").astype(str)
+            max_len = max(s.str.len().max(), len(col)) + 2
+            worksheet.set_column(i, i, min(int(max_len), 60))
 
     print(f"\nSaved: {output_file}")
 
