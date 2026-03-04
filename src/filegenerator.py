@@ -7,7 +7,7 @@ date-independent Salesforce data.
 
 Usage:
     1. Edit the CONFIG SECTION below (credentials, filters, date ranges).
-    2. Edit the MAIN section (bottommost section) for SF credentials.
+    2. Edit .env (bottommost section) for SF credentials.
     3. Run:  python item_usage_report.py
 """
 
@@ -43,7 +43,7 @@ class Config:
         self.MIN_file = "file name"
         self.MIN_sheet_name = "sheet name"
 
-        # Date configurations  –  overridden per-run in DATE_RANGES below
+        # Date configurations  –  Don't edit this one - edit DATE_RANGES below
         self.from_date = date(2025, 5, 1)
         self.to_date = date(2025, 8, 31)
         self.exclusion_effective_date = date(2026, 12, 31)
@@ -854,7 +854,7 @@ class ExcelCreation:
                     continue
                 print(f"\nProcessing sheet: {sheetname}")
                 print(f"Total rows: {len(df):,}")
-                df.replace([np.nan, np.inf, -np.inf], "", inplace=True)
+                df = df.replace([np.nan, np.inf, -np.inf], "")
                 t0 = time.time()
                 df.to_excel(writer, sheet_name=sheetname, index=False, startrow=0)
                 worksheet = writer.sheets[sheetname]
