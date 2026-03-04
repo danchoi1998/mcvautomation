@@ -25,6 +25,7 @@ import psycopg2
 import xlsxwriter
 import math
 import settings
+from master_file_creator import create_master_from_dfs
 
 
 # =============================================================================
@@ -888,10 +889,17 @@ def main():
     sf_data = fetch_salesforce_data(sf, myconf)
 
     # ── Run pipeline for EACH date range ─────────────────────────────────
+    results = []
     for from_date, to_date in DATE_RANGES:
         myconf.from_date = from_date
         myconf.to_date = to_date
-        run_purchase_pipeline(sf, myconf, sf_data)
+        df = run_purchase_pipeline(sf, myconf, sf_data)
+        results.append(df)
+
+    # ── Create master file (before stacked on top of during) ─────────────
+    if len(results) == 2:
+        master_path = os.path.join(myconf.save_files_to, f"{myconf.file_name} - MASTER.xlsx")
+        create_master_from_dfs(results[0], results[1], master_path)
 
     elapsed = time.time() - overall_start
     print("=" * 60)
