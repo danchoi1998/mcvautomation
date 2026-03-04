@@ -778,12 +778,6 @@ def run_purchase_pipeline(sf, config, sf_data):
         PurAccDat5 = PurAccDat5.loc[~PurAccDat5["MFR Platform ID"].isin(ids_remove)].copy()
         print(f"Removed {before - len(PurAccDat5):,} records for MFR IDs: {', '.join(ids_remove)}")
 
-    # ── 7. Write Excel ───────────────────────────────────────────────────
-    dfs = {"ALL Item Level Detail": PurAccDat5}
-    excel = ExcelCreation()
-    file_path = FileUtils.build_file_path(config)
-    excel.write_formatted_excel(dfs, file_path)
-
     print(f"Pipeline for {config.from_date} → {config.to_date} done in {time.time() - pipeline_start:.1f}s\n")
     return PurAccDat5
 
@@ -896,10 +890,9 @@ def main():
         df = run_purchase_pipeline(sf, myconf, sf_data)
         results.append(df)
 
-    # ── Create master file (before stacked on top of during) ─────────────
+    # ── Create master DataFrame (before stacked on top of during) ────────
     if len(results) == 2:
-        master_path = os.path.join(myconf.save_files_to, f"{myconf.file_name} - MASTER.xlsx")
-        create_master_from_dfs(results[0], results[1], master_path)
+        master = create_master_from_dfs(results[0], results[1])
 
     elapsed = time.time() - overall_start
     print("=" * 60)

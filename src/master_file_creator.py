@@ -97,32 +97,19 @@ def prepare_during(df):
 # MAIN
 # =============================================================================
 
-def _build_and_save(df_before, df_during, output_file):
-    """Prepare columns, union, and save to Excel."""
+def build_master(df_before, df_during):
+    """Prepare columns and union into a single DataFrame."""
     df_before = prepare_before(df_before)
     df_during = prepare_during(df_during)
 
     master = pd.concat([df_before, df_during], ignore_index=True)
     print(f"Master: {len(master):,} rows, {len(master.columns)} columns")
-
-    os.makedirs(os.path.dirname(output_file), exist_ok=True)
-
-    with pd.ExcelWriter(output_file, engine="xlsxwriter") as writer:
-        master.to_excel(writer, sheet_name="Master", index=False)
-
-        worksheet = writer.sheets["Master"]
-        for i, col in enumerate(master.columns):
-            s = master[col].fillna("").astype(str)
-            max_len = max(s.str.len().max(), len(str(col))) + 2
-            worksheet.set_column(i, i, min(max_len, 60))
-
-    print(f"Saved: {output_file}")
     return master
 
 
-def create_master_from_dfs(df_before, df_during, output_file):
-    """Create master file directly from DataFrames (called by filegenerator)."""
-    return _build_and_save(df_before, df_during, output_file)
+def create_master_from_dfs(df_before, df_during):
+    """Create master DataFrame directly from DataFrames (called by filegenerator)."""
+    return build_master(df_before, df_during)
 
 
 def create_master_file(before_file, during_file, output_dir, sheet_name=SHEET_NAME):
