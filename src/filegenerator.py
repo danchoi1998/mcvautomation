@@ -44,9 +44,6 @@ class Config:
         self.MIN_file = "file name"
         self.MIN_sheet_name = "sheet name"
 
-        # Date configurations  –  Don't edit this one - edit DATE_RANGES below
-        self.from_date = date(2025, 5, 1)
-        self.to_date = date(2025, 8, 31)
         self.exclusion_effective_date = date(2026, 12, 31)
 
         # Filter configurations
