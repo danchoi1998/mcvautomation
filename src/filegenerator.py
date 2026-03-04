@@ -33,10 +33,10 @@ import settings
 class Config:
     def __init__(self):
         # Output file name (date/time stamp is appended automatically)
-        self.file_name = "title"
+        self.file_name = "Example"
 
         # Folder where final Excel files are saved
-        self.save_files_to = "Z:\\Shared\\GPO Operations\\GPO Analytics & Support\\Data Skills Learning\\GPO Analytics Python Trainings\\"
+        self.save_files_to = "Z:\\Shared\\GPO Operations\\GPO Analytics & Support\\Data Skills Learning\\GPO Analytics Python Trainings\\Daniel's Files"
 
         # MIN file name and sheet (only used when check_min_file is True)
         self.MIN_file = "file name"
@@ -51,11 +51,11 @@ class Config:
         self.filters = {
             "manufacturer": {
                 "enabled": True,
-                "ids": ["MA-1000047"],
+                "ids": ["MA-1000277"],
             },
             "category": {
                 "enabled": True,
-                "values": ["Beverage Juice/Drinks Shelf Stable"],
+                "values": ["Art Supplies"],
                 "handle_apostrophe": False,
             },
             "min": {
@@ -81,7 +81,7 @@ class Config:
 # ── Date ranges to loop over (the ONLY thing that changes between runs) ─────
 DATE_RANGES = [
     (date(2025, 5, 1), date(2025, 8, 31)),
-    (date(2024, 5, 1), date(2024, 8, 31)),   # ← add/edit your second range
+    (date(2024, 9, 1), date(2024, 11, 30)),   # ← add/edit your second range
 ]
 
 
