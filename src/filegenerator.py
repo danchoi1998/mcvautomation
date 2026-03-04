@@ -26,6 +26,7 @@ import xlsxwriter
 from pathlib import Path
 import settings
 from master_file_creator import create_master_from_dfs
+from master_cleaner import load_target_ids, filter_targeted_accounts
 
 
 # =============================================================================
@@ -83,6 +84,12 @@ class Config:
 DATE_RANGES = [
     (date(2025, 5, 1), date(2025, 8, 31)),
     (date(2025, 9, 1), date(2026, 1, 15)),   # ← add/edit your second range
+]
+
+# ── External Excel files containing "Account Platform ID" for targeting ──────
+REFERENCE_FILES = [
+    # "/path/to/reference_file_1.xlsx",
+    # "/path/to/reference_file_2.xlsx",
 ]
 
 
@@ -893,6 +900,11 @@ def main():
     # ── Create master DataFrame (before stacked on top of during) ────────
     if len(results) == 2:
         master = create_master_from_dfs(results[0], results[1])
+
+        # ── Filter to targeted accounts ──────────────────────────────────
+        if REFERENCE_FILES:
+            target_ids = load_target_ids(REFERENCE_FILES)
+            master = filter_targeted_accounts(master, target_ids)
 
     elapsed = time.time() - overall_start
     print("=" * 60)
