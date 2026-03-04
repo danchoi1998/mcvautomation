@@ -23,7 +23,7 @@ import time
 import os
 import psycopg2
 import xlsxwriter
-import math
+from pathlib import Path
 import settings
 from master_file_creator import create_master_from_dfs
 
@@ -37,7 +37,7 @@ class Config:
         self.file_name = "Example"
 
         # Folder where final Excel files are saved
-        self.save_files_to = "Z:\\Shared\\GPO Operations\\GPO Analytics & Support\\Data Skills Learning\\GPO Analytics Python Trainings\\Daniel's Files"
+        self.save_files_to = Path(r"/mnt/c/Users/DanielChoi/OneDrive - Buyers Edge Platform/Desktop/Python/MCVAutomation/test_files/test_validations")
 
         # MIN file name and sheet (only used when check_min_file is True)
         self.MIN_file = "file name"
@@ -52,11 +52,11 @@ class Config:
         self.filters = {
             "manufacturer": {
                 "enabled": True,
-                "ids": ["MA-1000277"],
+                "ids": ["MA-1000012"],
             },
             "category": {
                 "enabled": True,
-                "values": ["Art Supplies"],
+                "values": ["Towels (Disposable)"],
                 "handle_apostrophe": False,
             },
             "min": {
@@ -82,7 +82,7 @@ class Config:
 # ── Date ranges to loop over (the ONLY thing that changes between runs) ─────
 DATE_RANGES = [
     (date(2025, 5, 1), date(2025, 8, 31)),
-    (date(2024, 9, 1), date(2024, 11, 30)),   # ← add/edit your second range
+    (date(2025, 9, 1), date(2026, 1, 15)),   # ← add/edit your second range
 ]
 
 
@@ -125,7 +125,7 @@ class FileUtils:
     def build_file_path(config):
         now = datetime.now(pytz.timezone("US/Eastern"))
         today = now.strftime("%Y-%m-%d at %H-%M")
-        return f"{config.save_files_to}\\{config.file_name} on {today}.xlsx"
+        return os.path.join(config.save_files_to, f"{config.file_name} on {today}.xlsx")
 
     @staticmethod
     def process_mins(config, df):
