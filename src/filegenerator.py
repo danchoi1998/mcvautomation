@@ -26,7 +26,7 @@ import xlsxwriter
 from pathlib import Path
 import settings
 from master_file_creator import create_master_from_dfs
-from master_cleaner import load_target_ids, filter_targeted_accounts, pivot_master
+from master_cleaner import load_target_ids, filter_targeted_accounts
 
 
 # =============================================================================
@@ -902,7 +902,6 @@ def main():
         if REFERENCE_FILES:
             target_ids = load_target_ids(REFERENCE_FILES)
             master = filter_targeted_accounts(master, target_ids)
-            master = pivot_master(master)
 
     elapsed = time.time() - overall_start
     print("=" * 60)

@@ -1,10 +1,11 @@
 """
 Master Cleaner
 ==============
-Cleans the combined master DataFrame:
-  1. Filters to targeted accounts (matched via external Excel files).
-  2. Adds an "Overall Targeted Acc?" column.
-  3. Pivots the data, summing Case QTY columns.
+Cleans the combined master DataFrame by filtering to targeted accounts.
+
+Targeted accounts are identified by external Excel files containing an
+"Account Platform ID" column. Rows are kept if any of the 4 SF Platform ID
+columns match a targeted Account Platform ID.
 """
 
 import pandas as pd
@@ -66,41 +67,6 @@ def filter_targeted_accounts(master, target_ids):
             mask = mask | master[col].isin(target_ids)
 
     master = master[mask].copy()
-    master["Overall Targeted Acc?"] = "Yes"
     print(f"Filtered to targeted accounts: {before_count:,} → {len(master):,} rows "
           f"({before_count - len(master):,} removed)")
     return master
-
-
-PIVOT_ROWS = [
-    "SF PA: GPO Brands-MAP",
-    "SF Highest Group Name",
-    "SF Highest Group PLID",
-    "SF Location: Name",
-    "Overall Targeted Acc?",
-    "Manufacturer",
-    "MIN",
-    "Product Description",
-    "Brand",
-    "Pack Size",
-]
-
-PIVOT_VALUES = [
-    "Before Marketing Period Case QTY",
-    "During Marketing Period Case QTY",
-]
-
-
-def pivot_master(master):
-    """
-    Pivot the master DataFrame, grouping by account/product fields
-    and summing the Case QTY columns.
-    """
-    pivoted = (
-        master
-        .groupby(PIVOT_ROWS, dropna=False)[PIVOT_VALUES]
-        .sum()
-        .reset_index()
-    )
-    print(f"Pivoted: {len(pivoted):,} rows, {len(pivoted.columns)} columns")
-    return pivoted
