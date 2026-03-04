@@ -1,8 +1,14 @@
 """
-Item Usage Report Pipeline
-==========================
-Core data fetching and processing pipeline. Queries Salesforce and the
-data warehouse, merges the results, and writes formatted Excel output.
+Item Usage Report - Refactored for Reuse
+=========================================
+Wraps the original notebook into a callable pipeline so you can run it
+multiple times (e.g. with different date ranges) without re-fetching
+date-independent Salesforce data.
+
+Usage:
+    1. Edit the CONFIG SECTION below (credentials, filters, date ranges).
+    2. Edit the MAIN section (bottommost section) for SF credentials.
+    3. Run:  python item_usage_report.py
 """
 
 # =============================================================================
@@ -16,22 +22,68 @@ import pytz
 import time
 import os
 import psycopg2
+import xlsxwriter
 import math
+import settings
+from master_file_creator import create_master_from_dfs
 
-from config import settings
-from config.columns import (
-    PURCHASE_COLUMNS,
-    DM_COLUMNS,
-    SF_COLUMNS_2,
-    SF_COLUMNS_3,
-    MFR_AGREEMENT_RENAME,
-)
-from utils.excel_utils import ExcelCreation
 
-#==============================================================================
-# Connect to database with Powershell prompt below:
-# tsh proxy db --tunnel prod1-pdiac-consumer1-workgroup --db-user viewer-serverless --db-name consumer_1 --port 63485
-#==============================================================================
+# =============================================================================
+# CONFIG SECTION  –  Edit these values before running
+# =============================================================================
+class Config:
+    def __init__(self):
+        # Output file name (date/time stamp is appended automatically)
+        self.file_name = "Example"
+
+        # Folder where final Excel files are saved
+        self.save_files_to = "Z:\\Shared\\GPO Operations\\GPO Analytics & Support\\Data Skills Learning\\GPO Analytics Python Trainings\\Daniel's Files"
+
+        # MIN file name and sheet (only used when check_min_file is True)
+        self.MIN_file = "file name"
+        self.MIN_sheet_name = "sheet name"
+
+        # Date configurations  –  overridden per-run in DATE_RANGES below
+        self.from_date = date(2025, 5, 1)
+        self.to_date = date(2025, 8, 31)
+        self.exclusion_effective_date = date(2026, 12, 31)
+
+        # Filter configurations
+        self.filters = {
+            "manufacturer": {
+                "enabled": True,
+                "ids": ["MA-1000277"],
+            },
+            "category": {
+                "enabled": True,
+                "values": ["Art Supplies"],
+                "handle_apostrophe": False,
+            },
+            "min": {
+                "enabled": False,
+                "ids": ["MIN1", "MIN2", "MIN3"],
+                "check_min_file": False,
+            },
+            "S1 communication filter": {
+                "enabled": False,
+            },
+            "remove entirely": {
+                "enabled": False,
+                "mfr_ids": ["MA-1047966"],
+            },
+            "brand": {
+                "enabled": False,
+                "brands": ["brand1", "brand2"],
+                "handle_apostrophe": True,
+            },
+        }
+
+
+# ── Date ranges to loop over (the ONLY thing that changes between runs) ─────
+DATE_RANGES = [
+    (date(2025, 5, 1), date(2025, 8, 31)),
+    (date(2024, 9, 1), date(2024, 11, 30)),   # ← add/edit your second range
+]
 
 
 # =============================================================================
@@ -66,7 +118,7 @@ def sf_to_df(sf, query):
 
 
 # =============================================================================
-# UTILITY CLASSES
+# UTILITY CLASSES  (unchanged from notebook)
 # =============================================================================
 class FileUtils:
     @staticmethod
@@ -337,7 +389,17 @@ class QueryBuilder:
                                         manufacturer_ids, filter_after):
         print(f"Exclusions Query: {mfr_agreement_query}")
         MfrAg = sf_to_df(sf, mfr_agreement_query)
-        MfrAg = MfrAg.rename(columns=MFR_AGREEMENT_RENAME)
+        MfrAg = MfrAg.rename(columns={
+            "Location__r.Name":                                "Exclusion: Location Name",
+            "Platform_Client_ID__c":                           "Exclusion: Location Platform ID",
+            "Manufacturer1__r.Name":                           "Exclusion: Manufacturer",
+            "Manufacturer1__r.Platform_Manufacturer_ID__c":    "Exclusion: Manufacturer ID",
+            "Effective_Date__c":                                "Exclusion: Effective Date",
+            "Date_Removed__c":                                 "Exclusion: Date Removed",
+            "Agreement_Type__c":                               "Exclusion: Agreement Type",
+            "Source_of_Exclusion__c":                           "Exclusion: Source of Agreement",
+            "Status__c":                                       "Exclusion: Status",
+        })
         MfrAg = MfrAg[["Exclusion: Location Name", "Exclusion: Location Platform ID",
                         "Exclusion: Manufacturer", "Exclusion: Manufacturer ID",
                         "Exclusion: Source of Agreement"]].copy()
@@ -533,7 +595,17 @@ def run_purchase_pipeline(sf, config, sf_data):
             cur.execute(purchase_query)
             table_rows = cur.fetchall()
 
-    LocPurchase = pd.DataFrame(table_rows, columns=PURCHASE_COLUMNS)
+    new_columns = [
+        "DM Customer Platform ID", "DM Customer ID",
+        "Distributor Parent", "DSTR PA Platform ID", "Distributor House",
+        "DSTR Platform ID", "Manufacturer Ori", "MFR Platform ID Ori",
+        "Manufacturer Group Ori", "MFR Group Platform ID Ori",
+        "MIN", "DIN", "GTIN", "Pack Size", "Product Description",
+        "DSTR Product ID", "MFR Product ID", "Unit", "Middle Category",
+        "Brand", "Brand Owner value",
+        "Total Quantity", "Total Case QTY", "Total Weight", "Total Price",
+    ]
+    LocPurchase = pd.DataFrame(table_rows, columns=new_columns)
     LocPurchase = LocPurchase.assign(
         Manufacturer=lambda d: d["Manufacturer Group Ori"].fillna(d["Manufacturer Ori"]),
         MFR_Platform_ID=lambda d: d["MFR Group Platform ID Ori"].fillna(d["MFR Platform ID Ori"]),
@@ -654,19 +726,41 @@ def run_purchase_pipeline(sf, config, sf_data):
     )
 
     # ── 5. Column ordering ───────────────────────────────────────────────
+    dm_columns = [
+        "Distributor Parent", "DSTR PA Platform ID", "Distributor House", "DSTR Platform ID",
+        "Manufacturer", "MFR Platform ID", "MIN", "DIN", "GTIN", "MFR Product ID",
+        "DSTR Product ID", "Pack Size", "Product Description", "Unit", "Middle Category",
+        "Brand", "Brand Owner", "Total Quantity", "Total Case QTY", "Total Weight", "Total Price",
+    ]
     sf_columns1 = ["On MAP?"]
     if config.filters["min"]["check_min_file"]:
         sf_columns1.append("In MIN File?")
-    sf_columns3 = list(SF_COLUMNS_3)
+    sf_columns2 = [
+        "SF Highest Group Name", "SF Highest Group PLID", "SF Location: Name",
+        "SF Location: Platform ID", "SF Location: Account ID",
+    ]
+    sf_columns3 = [
+        "SF PA: Name", "SF PA: Platform ID", "SF PA: Account ID",
+        "SF GPA: Name", "SF GPA: Platform ID", "SF GPA: Account ID",
+        "SF GGPA: Name", "SF GGPA: Platform ID", "SF GGPA: Account ID",
+        "SF Location: Market Sector", "SF Location: Market Segment", "SF Location: Menu Type",
+        "SF Location: Billing Street", "SF Location: Billing City",
+        "SF Location: Billing Postal Code", "SF Location: Billing State",
+        "SF PA: GPO Brands-MAP", "SF PA: Subscription Tier", "SF PA: Channel Partners",
+        "SF PA: Client Manager",
+        "SF Highest Group: Channel Partner(s)", "SF Highest Group: DSTR Sales Rep",
+        "SF Highest Group: Primary Contact", "SF Highest Group: Primary Contact Email",
+        "SF Highest Group: Primary Contact Phone",
+    ]
     if config.filters["S1 communication filter"]["enabled"]:
         idx = sf_columns3.index("SF PA: Client Manager") + 1
         sf_columns3.insert(idx, "SF PA: Communication Restrictions")
 
-    allcols = sf_columns1 + SF_COLUMNS_2 + DM_COLUMNS + sf_columns3
+    allcols = sf_columns1 + sf_columns2 + dm_columns + sf_columns3
     PurAccDat4 = PurAccDat4[
         sf_columns1
         + [c for c in PurAccDat4.columns if c not in allcols]
-        + list(SF_COLUMNS_2) + list(DM_COLUMNS) + sf_columns3
+        + sf_columns2 + dm_columns + sf_columns3
     ]
     for c in PurAccDat4.columns:
         if c not in allcols:
@@ -692,3 +786,126 @@ def run_purchase_pipeline(sf, config, sf_data):
 
     print(f"Pipeline for {config.from_date} → {config.to_date} done in {time.time() - pipeline_start:.1f}s\n")
     return PurAccDat5
+
+
+# =============================================================================
+# EXCEL WRITER  (unchanged from notebook)
+# =============================================================================
+class ExcelCreation:
+    def __init__(self):
+        self.FORMAT_MAPPINGS = {
+            "DM_Columns_2": {"header": "DMheader", "data": "format_data"},
+            "Weight":       {"header": "DMheader", "data": "weightn"},
+            "Min":          {"header": "DMheader", "data": "minn"},
+            "Quant":        {"header": "DMheader", "data": "quantn"},
+            "Money":        {"header": "DMheader", "data": "moneyn"},
+            "Programs":     {"header": "DMheader", "data": "format_data"},
+            "SF_Text":      {"header": "SFheader", "data": "text_format"},
+            "default":      {"header": "SFheader", "data": "format_data"},
+        }
+        self.column_to_format = {}
+        for col in ["Distributor Parent", "DSTR PA Platform ID", "Distributor House",
+                     "DSTR Platform ID", "Manufacturer", "MFR Platform ID",
+                     "MFR Product ID", "DSTR Product ID", "Pack Size",
+                     "Product Description", "Unit", "Middle Category", "Brand", "Brand Owner"]:
+            self.column_to_format[col] = "DM_Columns_2"
+        for col in ["On MAP?", "In MIN File?"]:
+            self.column_to_format[col] = "Programs"
+        for col in ["Total Weight", "Total Case QTY"]:
+            self.column_to_format[col] = "Weight"
+        for col in ["Total Quantity"]:
+            self.column_to_format[col] = "Quant"
+        for col in ["Total Price"]:
+            self.column_to_format[col] = "Money"
+        for col in ["MIN", "DIN", "GTIN"]:
+            self.column_to_format[col] = "Min"
+        for col in [
+            "SF GPA: Name", "SF GPA: Platform ID", "SF GPA: Account ID",
+            "SF GGPA: Name", "SF GGPA: Platform ID", "SF GGPA: Account ID",
+            "SF PA: Client Manager", "SF Highest Group: Channel Partner(s)",
+            "SF Highest Group: DSTR Sales Rep", "SF Highest Group: Primary Contact",
+            "SF Highest Group: Primary Contact Email", "SF Highest Group: Primary Contact Phone",
+            "SF PA: Name", "SF PA: Platform ID", "SF PA: Account ID",
+            "SF Location: Name", "SF Location: Platform ID", "SF Location: Account ID",
+            "SF Location: Market Sector", "SF Location: Market Segment", "SF Location: Menu Type",
+            "SF Location: Billing Street", "SF Location: Billing City",
+            "SF Location: Billing Postal Code", "SF Location: Billing State",
+            "SF PA: GPO Brands-MAP", "SF PA: Subscription Tier", "SF PA: Channel Partners",
+        ]:
+            self.column_to_format[col] = "SF_Text"
+
+    def write_formatted_excel(self, dfs, file_path):
+        total_start = time.time()
+        with pd.ExcelWriter(file_path, engine="xlsxwriter",
+                            engine_kwargs={"options": {"nan_inf_to_errors": True}}) as writer:
+            workbook = writer.book
+            formats = {
+                "SFheader":    workbook.add_format({"bold": True, "align": "left", "bg_color": "#F2F2F2"}),
+                "DMheader":    workbook.add_format({"bold": True, "align": "left", "bg_color": "#FDE9D9"}),
+                "text_format": workbook.add_format({"align": "left", "num_format": "@"}),
+                "format_data": workbook.add_format({"align": "left"}),
+                "moneyn":      workbook.add_format({"num_format": 44}),
+                "minn":        workbook.add_format({"num_format": "00000"}),
+                "weightn":     workbook.add_format({"num_format": "#,##0.00"}),
+                "quantn":      workbook.add_format({"num_format": "#,##0"}),
+            }
+            for sheetname, df in dfs.items():
+                if df.empty:
+                    continue
+                print(f"\nProcessing sheet: {sheetname}")
+                print(f"Total rows: {len(df):,}")
+                df.replace([np.nan, np.inf, -np.inf], "", inplace=True)
+                t0 = time.time()
+                df.to_excel(writer, sheet_name=sheetname, index=False, startrow=0)
+                worksheet = writer.sheets[sheetname]
+                for col_num, col_name in enumerate(df.columns):
+                    fmt_type = self.column_to_format.get(col_name, "default")
+                    hdr_fmt  = formats[self.FORMAT_MAPPINGS[fmt_type]["header"]]
+                    dat_fmt  = formats[self.FORMAT_MAPPINGS[fmt_type]["data"]]
+                    max_len  = max(len(str(col_name)), df[col_name].astype(str).apply(len).max())
+                    width    = 45 if max_len >= 43 else (max_len + 2)
+                    worksheet.write(0, col_num, col_name, hdr_fmt)
+                    worksheet.set_column(col_num, col_num, width, dat_fmt)
+                last_col = xlsxwriter.utility.xl_col_to_name(df.shape[1] - 1)
+                worksheet.autofilter(f"A1:{last_col}{df.shape[0] + 1}")
+                print(f"Writing data took: {time.time() - t0:.2f} seconds")
+        print(f"\nTotal Excel file creation time: {time.time() - total_start:.2f} seconds")
+        print(f"Excel file created at: {file_path}")
+
+
+# =============================================================================
+# MAIN  –  entry point
+# =============================================================================
+def main():
+    overall_start = time.time()
+
+    # ── Connect ──────────────────────────────────────────────────────────
+    sf = connect_salesforce(settings.SF_USERNAME, settings.SF_PASSWORD, settings.SF_SECURITY_TOKEN, False)
+
+    # ── Config ───────────────────────────────────────────────────────────
+    myconf = Config()
+
+    # ── Fetch SF data ONCE (date-independent) ────────────────────────────
+    sf_data = fetch_salesforce_data(sf, myconf)
+
+    # ── Run pipeline for EACH date range ─────────────────────────────────
+    results = []
+    for from_date, to_date in DATE_RANGES:
+        myconf.from_date = from_date
+        myconf.to_date = to_date
+        df = run_purchase_pipeline(sf, myconf, sf_data)
+        results.append(df)
+
+    # ── Create master file (before stacked on top of during) ─────────────
+    if len(results) == 2:
+        master_path = os.path.join(myconf.save_files_to, f"{myconf.file_name} - MASTER.xlsx")
+        create_master_from_dfs(results[0], results[1], master_path)
+
+    elapsed = time.time() - overall_start
+    print("=" * 60)
+    print(f"All done!  Total wall time: {elapsed / 60:.1f} minutes")
+    print("=" * 60)
+
+
+if __name__ == "__main__":
+    main()

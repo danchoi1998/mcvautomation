@@ -2,7 +2,7 @@
 Settings
 ========
 Loads credentials from the .env file at the project root.
-Fill in your values in .env before running.
+Fill in your values in .env before running filegenerator.py.
 """
 
 import os

@@ -17,16 +17,27 @@ The "during" DataFrame gets:
 The "before" data is stacked on top of the "during" data.
 
 Usage:
-    Called automatically by run.py, or run standalone:
-        python -m pipeline.master_file_creator <before_file> <during_file> <output_dir>
+    Called automatically by filegenerator.py, or run standalone by setting
+    BEFORE_FILE, DURING_FILE, and OUTPUT_DIR below.
 """
 
 import pandas as pd
 import os
+from pathlib import Path
 
-from config.columns import QTY_COL, CASE_QTY_COL
+# =============================================================================
+# CONFIG  -  Only needed for standalone usage
+# =============================================================================
+
+BEFORE_FILE = Path(r"/mnt/c/Users/DanielChoi/OneDrive - Buyers Edge Platform/Desktop/Python/MCVAutomation/test_files/previously_completed_validations/Essity Mfold Towel Campaign Validation - Before.xlsx")
+DURING_FILE = Path(r"/mnt/c/Users/DanielChoi/OneDrive - Buyers Edge Platform/Desktop/Python/MCVAutomation/test_files/previously_completed_validations/Essity Mfold Towel Campaign Validation - During.xlsx")
+OUTPUT_DIR = Path(r"/mnt/c/Users/DanielChoi/OneDrive - Buyers Edge Platform/Desktop/Python/MCVAutomation/test_files/test_validations")
 
 SHEET_NAME = "ALL Item Level Detail"
+
+# Original column names in both files
+QTY_COL = "Total Quantity"
+CASE_QTY_COL = "Total Case QTY"
 
 # =============================================================================
 # HELPERS
@@ -110,7 +121,7 @@ def _build_and_save(df_before, df_during, output_file):
 
 
 def create_master_from_dfs(df_before, df_during, output_file):
-    """Create master file directly from DataFrames (called by run.py)."""
+    """Create master file directly from DataFrames (called by filegenerator)."""
     return _build_and_save(df_before, df_during, output_file)
 
 
@@ -123,8 +134,6 @@ def create_master_file(before_file, during_file, output_dir, sheet_name=SHEET_NA
 
 
 if __name__ == "__main__":
-    import sys
-    if len(sys.argv) != 4:
-        print("Usage: python -m pipeline.master_file_creator <before_file> <during_file> <output_dir>")
-        sys.exit(1)
-    create_master_file(sys.argv[1], sys.argv[2], sys.argv[3])
+    if not BEFORE_FILE or not DURING_FILE or not OUTPUT_DIR:
+        raise ValueError("Please set BEFORE_FILE, DURING_FILE, and OUTPUT_DIR in the CONFIG section.")
+    create_master_file(BEFORE_FILE, DURING_FILE, OUTPUT_DIR)
