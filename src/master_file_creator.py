@@ -117,7 +117,7 @@ def create_master_file(before_file, during_file, output_dir, sheet_name=SHEET_NA
     output_file = build_output_path(before_file, during_file, output_dir)
     df_before = load_sheet(before_file, sheet_name)
     df_during = load_sheet(during_file, sheet_name)
-    return _build_and_save(df_before, df_during, output_file)
+    return build_master(df_before, df_during)
 
 
 if __name__ == "__main__":
