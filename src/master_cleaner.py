@@ -1,14 +1,14 @@
 """
 Master Cleaner
 ==============
-Cleans the combined master DataFrame by filtering to targeted accounts.
-
-Targeted accounts are identified by external Excel files containing an
-"Account Platform ID" column. Rows are kept if any of the 4 SF Platform ID
-columns match a targeted Account Platform ID.
+Cleans the combined master DataFrame:
+  1. Filters to targeted accounts (via external Excel files).
+  2. Aggregates Case QTY columns by account/product grouping.
+  3. Adds annualized QTY, percent growth, and marketing success columns.
 """
 
 import pandas as pd
+import numpy as np
 
 
 PLATFORM_ID_COLUMNS = [
@@ -69,4 +69,95 @@ def filter_targeted_accounts(master, target_ids):
     master = master[mask].copy()
     print(f"Filtered to targeted accounts: {before_count:,} → {len(master):,} rows "
           f"({before_count - len(master):,} removed)")
+    return master
+
+
+# =============================================================================
+# AGGREGATION
+# =============================================================================
+
+GROUP_COLUMNS = [
+    "SF PA: GPO Brands-MAP",
+    "SF Highest Group Name",
+    "SF Highest Group PLID",
+    "SF Location: Name",
+    "Manufacturer",
+    "MIN",
+    "Product Description",
+    "Brand",
+    "Pack Size",
+]
+
+AGG_VALUES = [
+    "Before Marketing Period Case QTY",
+    "During Marketing Period Case QTY",
+]
+
+
+def aggregate_master(master):
+    """Aggregate Case QTY columns by account/product grouping."""
+    aggregated = (
+        master
+        .groupby(GROUP_COLUMNS, dropna=False)[AGG_VALUES]
+        .sum()
+        .reset_index()
+    )
+    print(f"Aggregated: {len(master):,} → {len(aggregated):,} rows")
+    return aggregated
+
+
+# =============================================================================
+# CALCULATED COLUMNS
+# =============================================================================
+
+MARKETING_SUCCESS_THRESHOLD = 0.2  # 20% growth
+
+
+def add_calculated_columns(master, before_date_range, during_date_range):
+    """
+    Add annualized QTY, percent growth, and marketing success columns.
+
+    Parameters
+    ----------
+    master : pd.DataFrame
+        Aggregated master DataFrame.
+    before_date_range : tuple of (date, date)
+        (from_date, to_date) for the before period.
+    during_date_range : tuple of (date, date)
+        (from_date, to_date) for the during period.
+    """
+    before_days = (before_date_range[1] - before_date_range[0]).days + 1
+    during_days = (during_date_range[1] - during_date_range[0]).days + 1
+
+    before_qty = master["Before Marketing Period Case QTY"]
+    during_qty = master["During Marketing Period Case QTY"]
+
+    # Annualized columns
+    master["Before Marketing Period - Annualized QTY"] = (before_qty / before_days) * 365
+    master["During Marketing Period - Annualized QTY"] = (during_qty / during_days) * 365
+
+    annualized_before = master["Before Marketing Period - Annualized QTY"]
+    annualized_during = master["During Marketing Period - Annualized QTY"]
+
+    # Percent Growth: (during - before) / before
+    master["Percent Growth"] = np.where(
+        annualized_before == 0,
+        np.where(annualized_during > 0, np.inf, 0),
+        (annualized_during - annualized_before) / annualized_before,
+    )
+
+    # Annualized QTY difference
+    master["Annualized QTY"] = annualized_during - annualized_before
+
+    # Marketing Success: insert after "SF Location: Name"
+    marketing_success = np.where(
+        annualized_before == 0,
+        annualized_during > 0,
+        master["Percent Growth"] >= MARKETING_SUCCESS_THRESHOLD,
+    )
+    loc_name_idx = master.columns.get_loc("SF Location: Name")
+    master.insert(loc_name_idx + 1, "Marketing Success", marketing_success)
+
+    print(f"Added calculated columns. Marketing Success: "
+          f"{master['Marketing Success'].sum():,} / {len(master):,} rows")
     return master

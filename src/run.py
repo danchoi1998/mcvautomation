@@ -17,7 +17,7 @@ from filegenerator import (
     run_purchase_pipeline,
 )
 from master_file_creator import create_master_from_dfs
-from master_cleaner import load_target_ids, filter_targeted_accounts
+from master_cleaner import load_target_ids, filter_targeted_accounts, aggregate_master, add_calculated_columns
 
 
 # =============================================================================
@@ -112,6 +112,10 @@ def main():
         if REFERENCE_FILES:
             target_ids = load_target_ids(REFERENCE_FILES)
             master = filter_targeted_accounts(master, target_ids)
+
+        # ── Aggregate and add calculated columns ─────────────────────────
+        master = aggregate_master(master)
+        master = add_calculated_columns(master, DATE_RANGES[0], DATE_RANGES[1])
 
         print(f"\n{master.shape[0]:,} rows, {master.shape[1]} columns")
         print(master.head())
