@@ -1,0 +1,7 @@
+pandas
+numpy
+simple-salesforce
+psycopg2-binary
+xlsxwriter
+python-dotenv
+pytz
