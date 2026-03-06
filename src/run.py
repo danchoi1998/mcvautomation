@@ -17,7 +17,7 @@ from filegenerator import (
     run_purchase_pipeline,
 )
 from master_file_creator import create_master_from_dfs
-from master_cleaner import load_target_ids, filter_targeted_accounts, aggregate_master, add_calculated_columns, aggregate_summary
+from master_cleaner import load_target_ids, filter_targeted_accounts, filter_targeted_mins, aggregate_master, add_calculated_columns, aggregate_summary
 
 
 # =============================================================================
@@ -80,6 +80,11 @@ REFERENCE_FILES = [
     # "/path/to/reference_file_2.xlsx",
 ]
 
+# ── Targeted MINs to keep in the final output ────────────────────────────────
+TARGET_MINS = [
+    # "MIN1", "MIN2", "MIN3",
+]
+
 
 # =============================================================================
 # MAIN
@@ -112,6 +117,10 @@ def main():
         if REFERENCE_FILES:
             target_ids = load_target_ids(REFERENCE_FILES)
             master = filter_targeted_accounts(master, target_ids)
+
+        # ── Filter to targeted MINs ─────────────────────────────────────
+        if TARGET_MINS:
+            master = filter_targeted_mins(master, TARGET_MINS)
 
         # ── Aggregate and add calculated columns ─────────────────────────
         master = aggregate_master(master)

@@ -77,6 +77,29 @@ def filter_targeted_accounts(master, target_ids):
     return master
 
 
+def filter_targeted_mins(master, target_mins):
+    """
+    Keep only rows where the MIN column matches the provided list.
+
+    Parameters
+    ----------
+    master : pd.DataFrame
+        The master DataFrame.
+    target_mins : list of str
+        MINs to keep.
+
+    Returns
+    -------
+    pd.DataFrame
+        Filtered DataFrame with only targeted MIN rows.
+    """
+    before_count = len(master)
+    master = master[master["MIN"].isin(target_mins)].copy()
+    print(f"Filtered to targeted MINs: {before_count:,} → {len(master):,} rows "
+          f"({before_count - len(master):,} removed)")
+    return master
+
+
 # =============================================================================
 # AGGREGATION
 # =============================================================================
