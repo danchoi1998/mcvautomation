@@ -24,21 +24,21 @@ from master_cleaner import load_target_ids, filter_targeted_accounts
 # CONFIG SECTION  -  Edit these values before running
 # =============================================================================
 class Config:
-    def __init__(self):
-        # Output file name (date/time stamp is appended automatically)
-        self.file_name = "Example"
-
-        # Folder where final Excel files are saved
-        self.save_files_to = Path(r"/mnt/c/Users/DanielChoi/OneDrive - Buyers Edge Platform/Desktop/Python/MCVAutomation/test_files/test_validations")
-
-        # MIN file name and sheet (only used when check_min_file is True)
-        self.MIN_file = "file name"
-        self.MIN_sheet_name = "sheet name"
-
-        self.exclusion_effective_date = date(2026, 12, 31)
-
-        # Filter configurations
-        self.filters = {
+    def __init__(
+        self,
+        file_name="Example",
+        save_files_to=Path(r"/mnt/c/Users/DanielChoi/OneDrive - Buyers Edge Platform/Desktop/Python/MCVAutomation/test_files/test_validations"),
+        MIN_file="file name",
+        MIN_sheet_name="sheet name",
+        exclusion_effective_date=date(2026, 12, 31),
+        filters=None,
+    ):
+        self.file_name = file_name
+        self.save_files_to = save_files_to
+        self.MIN_file = MIN_file
+        self.MIN_sheet_name = MIN_sheet_name
+        self.exclusion_effective_date = exclusion_effective_date
+        self.filters = filters or {
             "manufacturer": {
                 "enabled": True,
                 "ids": ["MA-1000012"],
