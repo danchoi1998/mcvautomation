@@ -67,6 +67,11 @@ def filter_targeted_accounts(master, target_ids):
             mask = mask | master[col].isin(target_ids)
 
     master = master[mask].copy()
+
+    # Add "Targeted Account" column after "SF Location: Name"
+    loc_name_idx = master.columns.get_loc("SF Location: Name")
+    master.insert(loc_name_idx + 1, "Targeted Account", "Yes")
+
     print(f"Filtered to targeted accounts: {before_count:,} → {len(master):,} rows "
           f"({before_count - len(master):,} removed)")
     return master
@@ -81,6 +86,7 @@ GROUP_COLUMNS = [
     "SF Highest Group Name",
     "SF Highest Group PLID",
     "SF Location: Name",
+    "Targeted Account",
     "Manufacturer",
     "MIN",
     "Product Description",
@@ -155,9 +161,62 @@ def add_calculated_columns(master, before_date_range, during_date_range):
         annualized_during > 0,
         master["Percent Growth"] >= MARKETING_SUCCESS_THRESHOLD,
     )
-    loc_name_idx = master.columns.get_loc("SF Location: Name")
-    master.insert(loc_name_idx + 1, "Marketing Success", marketing_success)
+    targeted_idx = master.columns.get_loc("Targeted Account")
+    master.insert(targeted_idx + 1, "Marketing Success", marketing_success)
 
     print(f"Added calculated columns. Marketing Success: "
           f"{master['Marketing Success'].sum():,} / {len(master):,} rows")
     return master
+
+
+# =============================================================================
+# SUMMARY AGGREGATION
+# =============================================================================
+
+SUMMARY_GROUP_COLUMNS = [
+    "SF PA: GPO Brands-MAP",
+    "SF Highest Group Name",
+    "SF Highest Group PLID",
+    "Targeted Account",
+    "Marketing Success",
+]
+
+SUMMARY_AGG_VALUES = [
+    "Before Marketing Period - Annualized QTY",
+    "During Marketing Period - Annualized QTY",
+]
+
+
+def aggregate_summary(master):
+    """
+    Second aggregation: group by account-level columns + Marketing Success,
+    sum annualized QTY columns, then compute Percent Growth.
+
+    Parameters
+    ----------
+    master : pd.DataFrame
+        The item-detail DataFrame (after add_calculated_columns).
+
+    Returns
+    -------
+    pd.DataFrame
+        Summary-level DataFrame.
+    """
+    summary = (
+        master
+        .groupby(SUMMARY_GROUP_COLUMNS, dropna=False)[SUMMARY_AGG_VALUES]
+        .sum()
+        .reset_index()
+    )
+
+    ann_before = summary["Before Marketing Period - Annualized QTY"]
+    ann_during = summary["During Marketing Period - Annualized QTY"]
+
+    summary["Percent Growth"] = np.where(
+        ann_before == 0,
+        np.where(ann_during > 0, np.nan, 0),
+        (ann_during - ann_before) / ann_before,
+    )
+
+    print(f"Summary aggregation: {len(master):,} → {len(summary):,} rows")
+    return summary

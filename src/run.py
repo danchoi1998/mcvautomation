@@ -17,7 +17,7 @@ from filegenerator import (
     run_purchase_pipeline,
 )
 from master_file_creator import create_master_from_dfs
-from master_cleaner import load_target_ids, filter_targeted_accounts, aggregate_master, add_calculated_columns
+from master_cleaner import load_target_ids, filter_targeted_accounts, aggregate_master, add_calculated_columns, aggregate_summary
 
 
 # =============================================================================
@@ -115,12 +115,17 @@ def main():
 
         # ── Aggregate and add calculated columns ─────────────────────────
         master = aggregate_master(master)
-        master = add_calculated_columns(master, DATE_RANGES[0], DATE_RANGES[1])
+        item_detail = add_calculated_columns(master, DATE_RANGES[0], DATE_RANGES[1])
 
-        print(f"\n{master.shape[0]:,} rows, {master.shape[1]} columns")
-        print(master.head())
-        master.to_csv("master_preview.csv", index=False)
-        print("Saved master_preview.csv for inspection")
+        # Second aggregation: account-level summary
+        summary = aggregate_summary(item_detail)
+
+        print(f"\nItem Detail: {item_detail.shape[0]:,} rows, {item_detail.shape[1]} columns")
+        print(f"Summary:     {summary.shape[0]:,} rows, {summary.shape[1]} columns")
+
+        item_detail.to_csv("item_detail_preview.csv", index=False)
+        summary.to_csv("summary_preview.csv", index=False)
+        print("Saved item_detail_preview.csv and summary_preview.csv for inspection")
 
     elapsed = time.time() - overall_start
     print("=" * 60)
