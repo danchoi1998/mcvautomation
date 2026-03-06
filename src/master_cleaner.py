@@ -142,7 +142,7 @@ def add_calculated_columns(master, before_date_range, during_date_range):
     # Percent Growth: (during - before) / before
     master["Percent Growth"] = np.where(
         annualized_before == 0,
-        np.where(annualized_during > 0, np.inf, 0),
+        np.where(annualized_during > 0, np.nan, 0),
         (annualized_during - annualized_before) / annualized_before,
     )
 
