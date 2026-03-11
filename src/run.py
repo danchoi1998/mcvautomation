@@ -18,6 +18,7 @@ from filegenerator import (
 )
 from master_file_creator import create_master_from_dfs
 from master_cleaner import load_target_ids, filter_targeted_accounts, filter_targeted_mins, aggregate_master, add_calculated_columns, aggregate_summary
+from excel_writer import export_to_excel
 
 
 # =============================================================================
@@ -132,9 +133,16 @@ def main():
         print(f"\nItem Detail: {item_detail.shape[0]:,} rows, {item_detail.shape[1]} columns")
         print(f"Summary:     {summary.shape[0]:,} rows, {summary.shape[1]} columns")
 
-        item_detail.to_csv("item_detail_preview.csv", index=False)
-        summary.to_csv("summary_preview.csv", index=False)
-        print("Saved item_detail_preview.csv and summary_preview.csv for inspection")
+        # ── Export to formatted Excel ──────────────────────────────────────
+        output_path = os.path.join(myconf.save_files_to, f"{myconf.file_name}.xlsx")
+        export_to_excel(
+            item_detail,
+            summary,
+            title=myconf.file_name,
+            before_start_date=DATE_RANGES[0][0],
+            during_end_date=DATE_RANGES[1][1],
+            output_path=output_path,
+        )
 
     elapsed = time.time() - overall_start
     print("=" * 60)
