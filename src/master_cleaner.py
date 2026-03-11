@@ -172,10 +172,12 @@ def add_calculated_columns(master, before_date_range, during_date_range):
     annualized_during = master["During Marketing Period - Annualized QTY"]
 
     # Percent Growth: (during - before) / before
+    # Use replace to avoid ZeroDivisionError (np.where evaluates all branches)
+    safe_before = annualized_before.replace(0, np.nan)
     master["Percent Growth"] = np.where(
         annualized_before == 0,
         np.where(annualized_during > 0, np.nan, 0),
-        (annualized_during - annualized_before) / annualized_before,
+        (annualized_during - annualized_before) / safe_before,
     )
 
     # Annualized QTY difference
@@ -238,10 +240,11 @@ def aggregate_summary(master):
     ann_before = summary["Before Marketing Period - Annualized QTY"]
     ann_during = summary["During Marketing Period - Annualized QTY"]
 
+    safe_before = ann_before.replace(0, np.nan)
     summary["Percent Growth"] = np.where(
         ann_before == 0,
         np.where(ann_during > 0, np.nan, 0),
-        (ann_during - ann_before) / ann_before,
+        (ann_during - ann_before) / safe_before,
     )
 
     print(f"Summary aggregation: {len(master):,} → {len(summary):,} rows")

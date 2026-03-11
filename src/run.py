@@ -27,7 +27,7 @@ from excel_writer import export_to_excel
 class Config:
     def __init__(
         self,
-        file_name="Example",
+        file_name="Essity Mfold Towel Campaign Validation - Test 1",
         save_files_to=Path(r"/mnt/c/Users/DanielChoi/OneDrive - Buyers Edge Platform/Desktop/Python/MCVAutomation/test_files/test_validations"),
         MIN_file="file name",
         MIN_sheet_name="sheet name",
@@ -77,12 +77,16 @@ DATE_RANGES = [
 
 # ── External Excel files containing "Account Platform ID" for targeting ──────
 REFERENCE_FILES = [
-    # "/path/to/reference_file_1.xlsx",
-    # "/path/to/reference_file_2.xlsx",
+    "/mnt/c/Users/DanielChoi/OneDrive - Buyers Edge Platform/Desktop/Python/MCVAutomation/test_files/previously_completed_validations/CC-Tork-Towels-Cleanup-From-Sending-List-2025_w_client_info (1).csv",
+    "/mnt/c/Users/DanielChoi/OneDrive - Buyers Edge Platform/Desktop/Python/MCVAutomation/test_files/previously_completed_validations/DA_CF_11_17_2025_Essity_Tork_FREE_Sample_Retargeting_Campaign.csv",
+    "/mnt/c/Users/DanielChoi/OneDrive - Buyers Edge Platform/Desktop/Python/MCVAutomation/test_files/previously_completed_validations/DA_Tork_Towels_List_2025_w_Client_Info (1).csv",
+    "/mnt/c/Users/DanielChoi/OneDrive - Buyers Edge Platform/Desktop/Python/MCVAutomation/test_files/previously_completed_validations/S1_CF_MFR_11_17_2025_Tork_Multifold_Towels_Form.csv",
+    "/mnt/c/Users/DanielChoi/OneDrive - Buyers Edge Platform/Desktop/Python/MCVAutomation/test_files/previously_completed_validations/S1_Tork_Towels_Clean_up_From_Sending_List_2025_w_client_info (1).csv",
 ]
 
 # ── Targeted MINs to keep in the final output ────────────────────────────────
 TARGET_MINS = [
+    '424834', '424835', '420590', '553028'
     # "MIN1", "MIN2", "MIN3",
 ]
 
