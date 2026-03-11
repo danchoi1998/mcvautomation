@@ -36,7 +36,10 @@ def load_target_ids(file_paths):
     all_ids = set()
     for path in file_paths:
         print(f"Reading target IDs from: {path}")
-        df = pd.read_excel(path)
+        if str(path).endswith(".csv"):
+            df = pd.read_csv(path)
+        else:
+            df = pd.read_excel(path)
         ids = df["Account Platform ID"].dropna().unique()
         all_ids.update(ids)
         print(f"  Found {len(ids):,} IDs ({len(all_ids):,} unique total)")
