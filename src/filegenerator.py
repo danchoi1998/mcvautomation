@@ -18,7 +18,6 @@ import pytz
 import time
 import os
 import psycopg2
-import xlsxwriter
 import settings
 
 
@@ -724,90 +723,5 @@ def run_purchase_pipeline(sf, config, sf_data):
 
     print(f"Pipeline for {config.from_date} → {config.to_date} done in {time.time() - pipeline_start:.1f}s\n")
     return PurAccDat5
-
-
-# =============================================================================
-# EXCEL WRITER  (unchanged from notebook)
-# =============================================================================
-class ExcelCreation:
-    def __init__(self):
-        self.FORMAT_MAPPINGS = {
-            "DM_Columns_2": {"header": "DMheader", "data": "format_data"},
-            "Weight":       {"header": "DMheader", "data": "weightn"},
-            "Min":          {"header": "DMheader", "data": "minn"},
-            "Quant":        {"header": "DMheader", "data": "quantn"},
-            "Money":        {"header": "DMheader", "data": "moneyn"},
-            "Programs":     {"header": "DMheader", "data": "format_data"},
-            "SF_Text":      {"header": "SFheader", "data": "text_format"},
-            "default":      {"header": "SFheader", "data": "format_data"},
-        }
-        self.column_to_format = {}
-        for col in ["Distributor Parent", "DSTR PA Platform ID", "Distributor House",
-                     "DSTR Platform ID", "Manufacturer", "MFR Platform ID",
-                     "MFR Product ID", "DSTR Product ID", "Pack Size",
-                     "Product Description", "Unit", "Middle Category", "Brand", "Brand Owner"]:
-            self.column_to_format[col] = "DM_Columns_2"
-        for col in ["On MAP?", "In MIN File?"]:
-            self.column_to_format[col] = "Programs"
-        for col in ["Total Weight", "Total Case QTY"]:
-            self.column_to_format[col] = "Weight"
-        for col in ["Total Quantity"]:
-            self.column_to_format[col] = "Quant"
-        for col in ["Total Price"]:
-            self.column_to_format[col] = "Money"
-        for col in ["MIN", "DIN", "GTIN"]:
-            self.column_to_format[col] = "Min"
-        for col in [
-            "SF GPA: Name", "SF GPA: Platform ID", "SF GPA: Account ID",
-            "SF GGPA: Name", "SF GGPA: Platform ID", "SF GGPA: Account ID",
-            "SF PA: Client Manager", "SF Highest Group: Channel Partner(s)",
-            "SF Highest Group: DSTR Sales Rep", "SF Highest Group: Primary Contact",
-            "SF Highest Group: Primary Contact Email", "SF Highest Group: Primary Contact Phone",
-            "SF PA: Name", "SF PA: Platform ID", "SF PA: Account ID",
-            "SF Location: Name", "SF Location: Platform ID", "SF Location: Account ID",
-            "SF Location: Market Sector", "SF Location: Market Segment", "SF Location: Menu Type",
-            "SF Location: Billing Street", "SF Location: Billing City",
-            "SF Location: Billing Postal Code", "SF Location: Billing State",
-            "SF PA: GPO Brands-MAP", "SF PA: Subscription Tier", "SF PA: Channel Partners",
-        ]:
-            self.column_to_format[col] = "SF_Text"
-
-    def write_formatted_excel(self, dfs, file_path):
-        total_start = time.time()
-        with pd.ExcelWriter(file_path, engine="xlsxwriter",
-                            engine_kwargs={"options": {"nan_inf_to_errors": True}}) as writer:
-            workbook = writer.book
-            formats = {
-                "SFheader":    workbook.add_format({"bold": True, "align": "left", "bg_color": "#F2F2F2"}),
-                "DMheader":    workbook.add_format({"bold": True, "align": "left", "bg_color": "#FDE9D9"}),
-                "text_format": workbook.add_format({"align": "left", "num_format": "@"}),
-                "format_data": workbook.add_format({"align": "left"}),
-                "moneyn":      workbook.add_format({"num_format": 44}),
-                "minn":        workbook.add_format({"num_format": "00000"}),
-                "weightn":     workbook.add_format({"num_format": "#,##0.00"}),
-                "quantn":      workbook.add_format({"num_format": "#,##0"}),
-            }
-            for sheetname, df in dfs.items():
-                if df.empty:
-                    continue
-                print(f"\nProcessing sheet: {sheetname}")
-                print(f"Total rows: {len(df):,}")
-                df = df.replace([np.nan, np.inf, -np.inf], "")
-                t0 = time.time()
-                df.to_excel(writer, sheet_name=sheetname, index=False, startrow=0)
-                worksheet = writer.sheets[sheetname]
-                for col_num, col_name in enumerate(df.columns):
-                    fmt_type = self.column_to_format.get(col_name, "default")
-                    hdr_fmt  = formats[self.FORMAT_MAPPINGS[fmt_type]["header"]]
-                    dat_fmt  = formats[self.FORMAT_MAPPINGS[fmt_type]["data"]]
-                    max_len  = max(len(str(col_name)), df[col_name].astype(str).apply(len).max())
-                    width    = 45 if max_len >= 43 else (max_len + 2)
-                    worksheet.write(0, col_num, col_name, hdr_fmt)
-                    worksheet.set_column(col_num, col_num, width, dat_fmt)
-                last_col = xlsxwriter.utility.xl_col_to_name(df.shape[1] - 1)
-                worksheet.autofilter(f"A1:{last_col}{df.shape[0] + 1}")
-                print(f"Writing data took: {time.time() - t0:.2f} seconds")
-        print(f"\nTotal Excel file creation time: {time.time() - total_start:.2f} seconds")
-        print(f"Excel file created at: {file_path}")
 
 
