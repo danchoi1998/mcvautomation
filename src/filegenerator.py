@@ -45,12 +45,20 @@ def connect_datawarehouse():
     )
 
 
-def sf_to_df(sf, query):
+def sf_to_df(sf, query, max_retries=3):
     """Execute a Salesforce SOQL query and return a clean DataFrame."""
-    result = sf.query_all(query)
-    df = pd.json_normalize(result["records"])
-    df = df.drop(df.filter(regex="attribute").columns, axis=1)
-    return df
+    for attempt in range(1, max_retries + 1):
+        try:
+            result = sf.query_all(query)
+            df = pd.json_normalize(result["records"])
+            df = df.drop(df.filter(regex="attribute").columns, axis=1)
+            return df
+        except Exception as e:
+            print(f"  sf_to_df attempt {attempt}/{max_retries} failed: {e}")
+            if attempt == max_retries:
+                raise
+            print("  Retrying...")
+            time.sleep(5)
 
 
 # =============================================================================
