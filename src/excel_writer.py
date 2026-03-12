@@ -8,23 +8,31 @@ import os
 import xlsxwriter
 
 
+# Column rename mapping (applied to DataFrames before writing)
+COLUMN_RENAMES = {
+    "Before Marketing Period Case QTY": "Prior to Marketing Period Case QTY",
+    "During Marketing Period Case QTY": "Marketing Period Case QTY",
+    "Before Marketing Period - Annualized QTY": "Prior to Marketing Period - Annualized QTY",
+    "During Marketing Period - Annualized QTY": "Marketing Period - Annualized QTY",
+}
+
 # Columns that get a SUBTOTAL(9, ...) formula on each sheet
 ITEM_DETAIL_SUBTOTAL_COLS = [
-    "Before Marketing Period Case QTY",
-    "During Marketing Period Case QTY",
-    "Before Marketing Period - Annualized QTY",
-    "During Marketing Period - Annualized QTY",
+    "Prior to Marketing Period Case QTY",
+    "Marketing Period Case QTY",
+    "Prior to Marketing Period - Annualized QTY",
+    "Marketing Period - Annualized QTY",
     "Annualized QTY",
 ]
 
 SUMMARY_SUBTOTAL_COLS = [
-    "Before Marketing Period - Annualized QTY",
-    "During Marketing Period - Annualized QTY",
+    "Prior to Marketing Period - Annualized QTY",
+    "Marketing Period - Annualized QTY",
 ]
 
 # Columns to sort (largest to smallest) before writing
 ITEM_DETAIL_SORT_COL = "Annualized QTY"
-SUMMARY_SORT_COL = "During Marketing Period - Annualized QTY"
+SUMMARY_SORT_COL = "Marketing Period - Annualized QTY"
 
 # Layout constants
 HEADER_ROW = 6        # 0-indexed (row 7 in Excel)
@@ -85,6 +93,7 @@ def _write_sheet(workbook, sheet_name, df, title, date_line, subtotal_cols, sort
     )
 
     # ── Row 7: Column headers ─────────────────────────────────────────────
+    worksheet.set_row(HEADER_ROW, 45)
     for col_idx, col_name in enumerate(df.columns):
         worksheet.write(HEADER_ROW, col_idx, col_name, header_fmt)
 
@@ -160,6 +169,13 @@ def export_to_excel(
 
     # Filter summary to only rows where Marketing Success = "Yes"
     summary = summary[summary["Marketing Success"] == "Yes"].reset_index(drop=True)
+
+    # Rename columns for display
+    item_detail = item_detail.rename(columns=COLUMN_RENAMES)
+    summary = summary.rename(columns={
+        **COLUMN_RENAMES,
+        "SF PA: GPO Brands-MAP": "GPO Brand",
+    })
 
     workbook = xlsxwriter.Workbook(str(output_path))
 
