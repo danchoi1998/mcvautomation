@@ -10,11 +10,9 @@ Called by run.py — do not run this file directly.
 # =============================================================================
 # IMPORTS
 # =============================================================================
-from datetime import datetime
 import pandas as pd
 import numpy as np
 from simple_salesforce import Salesforce
-import pytz
 import time
 import os
 import psycopg2
@@ -64,12 +62,6 @@ def sf_to_df(sf, query, max_retries=3):
 # UTILITY CLASSES  (unchanged from notebook)
 # =============================================================================
 class FileUtils:
-    @staticmethod
-    def build_file_path(config):
-        now = datetime.now(pytz.timezone("US/Eastern"))
-        today = now.strftime("%Y-%m-%d at %H-%M")
-        return os.path.join(config.save_files_to, f"{config.file_name} on {today}.xlsx")
-
     @staticmethod
     def process_mins(config, df):
         df["MIN"] = df["MIN"].astype(str).replace({",": "00", "": "00", "nan": "00"})
