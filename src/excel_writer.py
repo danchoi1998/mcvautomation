@@ -63,12 +63,17 @@ def _write_sheet(workbook, sheet_name, df, title, date_line, subtotal_cols, sort
         "bg_color": "#B5E6A2",
         "border": 1,
         "text_wrap": True,
+        "align": "center",
         "valign": "vcenter",
     })
     cell_fmt = workbook.add_format({"border": 1})
     number_fmt = workbook.add_format({"border": 1, "num_format": "#,##0.00"})
     pct_fmt = workbook.add_format({"border": 1, "num_format": "0.00%"})
-    subtotal_fmt = workbook.add_format({"border": 1, "num_format": "#,##0.00", "bold": True})
+    subtotal_fmt = workbook.add_format({
+        "num_format": "#,##0.00",
+        "bold": True,
+        "bottom": 1,
+    })
 
     # ── Rows 1-3: Title, date range, note ─────────────────────────────────
     worksheet.write(0, 0, title, title_fmt)
@@ -153,17 +158,21 @@ def export_to_excel(
     """
     date_line = f"Data: {before_start_date.strftime('%m/%d/%Y')} - {during_end_date.strftime('%m/%d/%Y')}"
 
+    # Filter summary to only rows where Marketing Success = "Yes"
+    summary = summary[summary["Marketing Success"] == "Yes"].reset_index(drop=True)
+
     workbook = xlsxwriter.Workbook(str(output_path))
 
-    _write_sheet(
-        workbook, "Item Detail", item_detail,
-        title, date_line,
-        ITEM_DETAIL_SUBTOTAL_COLS, ITEM_DETAIL_SORT_COL,
-    )
+    # Summary sheet first, then Item Detail
     _write_sheet(
         workbook, "Summary", summary,
         title, date_line,
         SUMMARY_SUBTOTAL_COLS, SUMMARY_SORT_COL,
+    )
+    _write_sheet(
+        workbook, "Item Detail", item_detail,
+        title, date_line,
+        ITEM_DETAIL_SUBTOTAL_COLS, ITEM_DETAIL_SORT_COL,
     )
 
     workbook.close()

@@ -190,10 +190,11 @@ def add_calculated_columns(master, before_date_range, during_date_range):
         master["Percent Growth"] >= MARKETING_SUCCESS_THRESHOLD,
     )
     targeted_idx = master.columns.get_loc("Targeted Account")
-    master.insert(targeted_idx + 1, "Marketing Success", marketing_success)
+    master.insert(targeted_idx + 1, "Marketing Success",
+                  np.where(marketing_success, "Yes", "No"))
 
     print(f"Added calculated columns. Marketing Success: "
-          f"{master['Marketing Success'].sum():,} / {len(master):,} rows")
+          f"{(master['Marketing Success'] == 'Yes').sum():,} / {len(master):,} rows")
     return master
 
 
