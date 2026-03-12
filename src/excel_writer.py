@@ -75,10 +75,11 @@ def _write_sheet(workbook, sheet_name, df, title, date_line, subtotal_cols, sort
         "valign": "vcenter",
     })
     cell_fmt = workbook.add_format({"border": 1})
-    number_fmt = workbook.add_format({"border": 1, "num_format": "#,##0.00"})
+    cell_center_fmt = workbook.add_format({"border": 1, "align": "center"})
+    number_fmt = workbook.add_format({"border": 1, "num_format": "#,##0"})
     pct_fmt = workbook.add_format({"border": 1, "num_format": "0.00%"})
     subtotal_fmt = workbook.add_format({
-        "num_format": "#,##0.00",
+        "num_format": "#,##0",
         "bold": True,
         "bottom": 1,
     })
@@ -119,6 +120,8 @@ def _write_sheet(workbook, sheet_name, df, title, date_line, subtotal_cols, sort
                 fmt = pct_fmt
             elif col_name in subtotal_cols:
                 fmt = number_fmt
+            elif col_name in ("GPO Brand", "SF PA: GPO Brands-MAP"):
+                fmt = cell_center_fmt
             else:
                 fmt = cell_fmt
 
@@ -131,14 +134,20 @@ def _write_sheet(workbook, sheet_name, df, title, date_line, subtotal_cols, sort
     # ── Autofilter on header row ──────────────────────────────────────────
     worksheet.autofilter(HEADER_ROW, 0, last_data_row, num_cols - 1)
 
-    # ── Auto-fit column widths (approximate) ──────────────────────────────
+    # ── Column widths ──────────────────────────────────────────────────────
     for col_idx, col_name in enumerate(df.columns):
-        max_len = len(str(col_name))
-        for row_idx in range(min(num_rows, 100)):
-            val = df.iloc[row_idx, col_idx]
-            if val is not None and not (isinstance(val, float) and val != val):
-                max_len = max(max_len, len(str(val)))
-        worksheet.set_column(col_idx, col_idx, min(max_len + 2, 40))
+        if "QTY" in col_name and col_name not in ("Percent Growth", "Annualized QTY"):
+            worksheet.set_column(col_idx, col_idx, 22.14)
+        elif col_name in ("Percent Growth", "Annualized QTY") and sheet_name == "Item Detail":
+            worksheet.set_column(col_idx, col_idx, 15.48)
+        else:
+            # Auto-fit (approximate)
+            max_len = len(str(col_name))
+            for row_idx in range(min(num_rows, 100)):
+                val = df.iloc[row_idx, col_idx]
+                if val is not None and not (isinstance(val, float) and val != val):
+                    max_len = max(max_len, len(str(val)))
+            worksheet.set_column(col_idx, col_idx, min(max_len + 2, 40))
 
 
 def export_to_excel(
