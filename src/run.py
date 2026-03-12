@@ -107,12 +107,23 @@ def main():
     sf_data = fetch_salesforce_data(sf, myconf)
 
     # ── Run pipeline for EACH date range ─────────────────────────────────
+    MAX_RETRIES = 3
     results = []
     for from_date, to_date in DATE_RANGES:
         myconf.from_date = from_date
         myconf.to_date = to_date
-        df = run_purchase_pipeline(sf, myconf, sf_data)
-        results.append(df)
+        for attempt in range(1, MAX_RETRIES + 1):
+            try:
+                # Fresh SF connection each attempt to avoid session timeout
+                sf = connect_salesforce(settings.SF_USERNAME, settings.SF_PASSWORD, settings.SF_SECURITY_TOKEN, False)
+                df = run_purchase_pipeline(sf, myconf, sf_data)
+                results.append(df)
+                break
+            except Exception as e:
+                print(f"\n⚠ Pipeline attempt {attempt}/{MAX_RETRIES} failed: {e}")
+                if attempt == MAX_RETRIES:
+                    raise
+                print("Retrying with fresh SF connection...\n")
 
     # ── Create master DataFrame (before stacked on top of during) ────────
     if len(results) == 2:
