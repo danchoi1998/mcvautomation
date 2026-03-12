@@ -27,7 +27,7 @@ from excel_writer import export_to_excel
 class Config:
     def __init__(
         self,
-        file_name="Essity Mfold Towel Campaign Validation - Test 1",
+        file_name="Essity Mfold Towel Campaign Validation - Test 2",
         save_files_to=Path(r"/mnt/c/Users/DanielChoi/OneDrive - Buyers Edge Platform/Desktop/Python/MCVAutomation/test_files/test_validations"),
         MIN_file="file name",
         MIN_sheet_name="sheet name",
